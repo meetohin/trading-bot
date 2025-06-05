@@ -1,0 +1,75 @@
+{
+  "$id": "https://schemas.tradingbot.com/identity.schema.json",
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "TradingBot User",
+  "type": "object",
+  "properties": {
+    "traits": {
+      "type": "object",
+      "properties": {
+        "email": {
+          "type": "string",
+          "format": "email",
+          "title": "E-Mail",
+          "ory.sh/kratos": {
+            "credentials": {
+              "password": {
+                "identifier": true
+              },
+              "totp": {
+                "account_name": true
+              },
+              "webauthn": {
+                "identifier": true
+              }
+            },
+            "verification": {
+              "via": "email"
+            },
+            "recovery": {
+              "via": "email"
+            }
+          }
+        },
+        "username": {
+          "type": "string",
+          "title": "Username",
+          "minLength": 3,
+          "maxLength": 50,
+          "pattern": "^[a-zA-Z0-9_-]+$"
+        },
+        "first_name": {
+          "type": "string",
+          "title": "First Name",
+          "maxLength": 100
+        },
+        "last_name": {
+          "type": "string",
+          "title": "Last Name",
+          "maxLength": 100
+        },
+        "phone": {
+          "type": "string",
+          "title": "Phone Number",
+          "pattern": "^\\+[1-9]\\d{1,14}$"
+        },
+        "subscription_plan": {
+          "type": "string",
+          "title": "Subscription Plan",
+          "enum": ["free", "basic", "premium", "enterprise"],
+          "default": "free"
+        },
+        "avatar": {
+          "type": "string",
+          "title": "Avatar URL",
+          "format": "uri"
+        }
+      },
+      "required": [
+        "email",
+        "username"
+      ],
+      "additionalProperties": false
+    }
+  }
+}
