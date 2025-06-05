@@ -1,0 +1,150 @@
+_format_version: "3.0"
+_transform: true
+
+# SERVICES CONFIGURATION
+services:
+  # User Service
+  - name: user-service
+    url: http://host.docker.internal:8080
+    tags: ["user-management"]
+
+  # Bot Service
+  - name: bot-service
+    url: http://host.docker.internal:8081
+    tags: ["bot-management"]
+
+  # Strategy Service
+  - name: strategy-service
+    url: http://host.docker.internal:8082
+    tags: ["strategy-management"]
+
+# ROUTES CONFIGURATION
+routes:
+  # Public routes (no authentication)
+  - name: health-check
+    service: user-service
+    paths: ["/health", "/ping"]
+    methods: ["GET"]
+
+  # User routes
+  - name: user-public
+    service: user-service
+    paths: ["/api/v1/users/register", "/api/v1/users/profile"]
+    methods: ["GET", "POST"]
+    plugins:
+      - name: cors
+      - name: rate-limiting
+        config:
+          minute: 60
+          hour: 1000
+
+  - name: user-protected
+    service: user-service
+    paths: ["/api/v1/users"]
+    methods: ["GET", "POST", "PUT", "DELETE", "PATCH"]
+    plugins:
+      - name: jwt
+        config:
+          uri_param_names: ["token"]
+          cookie_names: ["jwt"]
+      - name: cors
+      - name: rate-limiting
+        config:
+          minute: 100
+          hour: 2000
+
+  # Bot routes (all protected)
+  - name: bot-routes
+    service: bot-service
+    paths: ["/api/v1/bots"]
+    methods: ["GET", "POST", "PUT", "DELETE", "PATCH"]
+    plugins:
+      - name: jwt
+      - name: cors
+      - name: rate-limiting
+        config:
+          minute: 200
+          hour: 5000
+      - name: request-size-limiting
+        config:
+          allowed_payload_size: 1024
+
+  # Strategy routes (all protected)
+  - name: strategy-routes
+    service: strategy-service
+    paths: ["/api/v1/strategies"]
+    methods: ["GET", "POST", "PUT", "DELETE", "PATCH"]
+    plugins:
+      - name: jwt
+      - name: cors
+      - name: rate-limiting
+        config:
+          minute: 150
+          hour: 3000
+
+# CONSUMERS (Auth0 Integration)
+consumers:
+  - username: auth0-users
+    tags: ["auth0"]
+
+# PLUGINS CONFIGURATION
+plugins:
+  # Global CORS
+  - name: cors
+    config:
+      origins:
+        - "http://localhost:3000"
+        - "https://app.tradingbot.com"
+      methods:
+        - "GET"
+        - "POST"
+        - "PUT"
+        - "DELETE"
+        - "PATCH"
+        - "OPTIONS"
+      headers:
+        - "Accept"
+        - "Accept-Version"
+        - "Content-Length"
+        - "Content-MD5"
+        - "Content-Type"
+        - "Date"
+        - "Authorization"
+        - "X-Auth0-Token"
+      exposed_headers:
+        - "X-Auth0-Token"
+      credentials: true
+      max_age: 3600
+
+  # Global Rate Limiting
+  - name: rate-limiting
+    config:
+      minute: 1000
+      hour: 10000
+      policy: local
+
+  # Request/Response Logging
+  - name: http-log
+    config:
+      http_endpoint: "http://logstash:8080/kong-logs"
+      method: POST
+      timeout: 1000
+      keepalive: 1000
+
+  # Prometheus Metrics
+  - name: prometheus
+    config:
+      per_consumer: true
+      status_code_metrics: true
+      latency_metrics: true
+      bandwidth_metrics: true
+
+# JWT CONFIGURATION FOR AUTH0
+jwt_secrets:
+  - consumer: auth0-users
+    algorithm: RS256
+    key: |
+      # TODO: 
+      -----BEGIN PUBLIC KEY-----
+      # Auth0 public key will be inserted here
+      -----END PUBLIC KEY-----
